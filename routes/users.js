@@ -1,5 +1,5 @@
+// routes/userRoutes.js
 const express = require('express');
-const axios = require('axios');
 const { body, validationResult } = require('express-validator');
 const UserService = require('../services/userService');
 const router = express.Router();
@@ -28,17 +28,14 @@ router.post('/', validateUser, async (req, res) => {
 
   try {
     const { first_name, last_name, age } = req.body;
-    const response = await axios.post(`${supabaseUrl}/rest/v1/users`, {
-      first_name, last_name, age
-    }, { headers });
-    res.json(response.data);
+    const userData = { first_name, last_name, age };
+    const newUser = await userService.createUser(userData);
+    res.json(newUser);
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-
-
 
 router.put('/:id', validateUser, async (req, res) => {
   const errors = validationResult(req);
@@ -58,8 +55,8 @@ router.put('/:id', validateUser, async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const response = await axios.get(`${supabaseUrl}/rest/v1/users`, { headers });
-    res.json(response.data);
+    const users = await userService.getUsers();
+    res.json(users);
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: 'Internal server error' });
@@ -68,8 +65,8 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const response = await axios.get(`${supabaseUrl}/rest/v1/users?id=eq.${req.params.id}`, { headers });
-    res.json(response.data[0]);
+    const user = await userService.getUserById(req.params.id);
+    res.json(user);
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: 'Internal server error' });
@@ -78,7 +75,7 @@ router.get('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await axios.delete(`${supabaseUrl}/rest/v1/users?id=eq.${req.params.id}`, { headers });
+    await userService.deleteUser(req.params.id);
     res.status(204).send();
   } catch (err) {
     console.error(err.message);
@@ -88,8 +85,8 @@ router.delete('/:id', async (req, res) => {
 
 router.get('/:id/orders', async (req, res) => {
   try {
-    const response = await axios.get(`${supabaseUrl}/rest/v1/orders?user_id=eq.${req.params.id}`, { headers });
-    res.json(response.data);
+    const orders = await userService.getUserOrders(req.params.id);
+    res.json(orders);
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: 'Internal server error' });
@@ -98,18 +95,14 @@ router.get('/:id/orders', async (req, res) => {
 
 router.put('/:id/check-inactive', async (req, res) => {
   try {
-    const response = await axios.get(`${supabaseUrl}/rest/v1/orders?user_id=eq.${req.params.id}`, { headers });
-    if (response.data.length === 0) {
-      const result = await axios.patch(`${supabaseUrl}/rest/v1/users?id=eq.${req.params.id}`, {
-        active: false
-      }, { headers });
-      res.json(result.data[0]);
-    } else {
-      res.status(400).json({ error: 'User has orders' });
-    }
+    const result = await userService.checkUserInactive(req.params.id);
+    res.json(result);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: 'Internal server error' });
+    if (err.message === 'User has orders') {
+      res.status(400).json({ error: err.message });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
   }
 });
 
