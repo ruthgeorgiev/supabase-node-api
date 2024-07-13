@@ -1,4 +1,3 @@
-// services/userService.js
 const axios = require('axios');
 
 class UserService {
@@ -16,7 +15,7 @@ class UserService {
       );
       return response.data;
     } catch (error) {
-      console.error(error.message);
+      console.error(`Error creating user: ${error.message}`);
       throw new Error('Internal server error');
     }
   }
@@ -28,9 +27,9 @@ class UserService {
         userData,
         { headers: this.headers }
       );
-      return response.data;
+      return response.data[0];
     } catch (error) {
-      console.error(error.message);
+      console.error(`Error updating user: ${error.message}`);
       throw new Error('Internal server error');
     }
   }
@@ -40,7 +39,7 @@ class UserService {
       const response = await axios.get(`${this.supabaseUrl}/rest/v1/users`, { headers: this.headers });
       return response.data;
     } catch (error) {
-      console.error(error.message);
+      console.error(`Error fetching users: ${error.message}`);
       throw new Error('Internal server error');
     }
   }
@@ -53,7 +52,7 @@ class UserService {
       );
       return response.data[0];
     } catch (error) {
-      console.error(error.message);
+      console.error(`Error fetching user by ID: ${error.message}`);
       throw new Error('Internal server error');
     }
   }
@@ -65,7 +64,7 @@ class UserService {
         { headers: this.headers }
       );
     } catch (error) {
-      console.error(error.message);
+      console.error(`Error deleting user: ${error.message}`);
       throw new Error('Internal server error');
     }
   }
@@ -78,30 +77,39 @@ class UserService {
       );
       return response.data;
     } catch (error) {
-      console.error(error.message);
+      console.error(`Error fetching user orders: ${error.message}`);
       throw new Error('Internal server error');
     }
   }
 
   async checkUserInactive(id) {
     try {
-      const response = await axios.get(
+      console.log(`Fetching orders for user ID: ${id}`);
+      const ordersResponse = await axios.get(
         `${this.supabaseUrl}/rest/v1/orders?user_id=eq.${id}`,
         { headers: this.headers }
       );
-      if (response.data.length === 0) {
+      console.log(`Orders found: ${ordersResponse.data.length}`);
+      if (ordersResponse.data.length === 0) {
+        console.log(`No orders found for user ID: ${id}. Setting user as inactive.`);
         const result = await axios.patch(
           `${this.supabaseUrl}/rest/v1/users?id=eq.${id}`,
           { active: false },
           { headers: this.headers }
         );
-        return result.data[0];
+        console.log(`User ID: ${id} set to inactive. Result: ${JSON.stringify(result.data)}`);
+        return result.data[0];  // Ensure the updated user is returned
       } else {
+        console.log(`User ID: ${id} has orders.`);
         throw new Error('User has orders');
       }
     } catch (error) {
-      console.error(error.message);
-      throw new Error('Internal server error');
+      console.error(`Error checking inactivity for user ID: ${id} - ${error.message}`);
+      if (error.message === 'User has orders') {
+        throw error;
+      } else {
+        throw new Error('Internal server error');
+      }
     }
   }
 }

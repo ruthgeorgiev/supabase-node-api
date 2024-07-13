@@ -1,4 +1,3 @@
-// routes/userRoutes.js
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const UserService = require('../services/userService');
@@ -95,13 +94,16 @@ router.get('/:id/orders', async (req, res) => {
 
 router.put('/:id/check-inactive', async (req, res) => {
   try {
+    console.log(`Checking inactivity for user with ID: ${req.params.id}`);
     const result = await userService.checkUserInactive(req.params.id);
-    res.json(result);
+    console.log(`Result from checkUserInactive: ${JSON.stringify(result)}`);
+    res.json(result);  // Ensure the response is sent back to the client
   } catch (err) {
+    console.error(`Error: ${err.message}`);
     if (err.message === 'User has orders') {
       res.status(400).json({ error: err.message });
     } else {
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: 'Internal server error' });
     }
   }
 });
