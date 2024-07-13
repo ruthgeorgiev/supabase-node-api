@@ -1,16 +1,14 @@
 const express = require('express');
-const pool = require('../db');
 const { body, validationResult } = require('express-validator');
+const Order = require('../models/Order');
 const router = express.Router();
 
-// Validation middleware for order data
 const validateOrder = [
-  body('price').isFloat({ gt: 0 }),
-  body('date').isISO8601(),
-  body('user_id').isInt({ gt: 0 })
+  body('price').isFloat({ gt: 0 }).withMessage('Price must be a positive number'),
+  body('date').isISO8601().withMessage('Date must be a valid ISO 8601 date'),
+  body('user_id').isMongoId().withMessage('User ID must be a valid MongoDB ObjectId')
 ];
 
-// POST /orders to create a new order
 router.post('/', validateOrder, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -19,17 +17,15 @@ router.post('/', validateOrder, async (req, res) => {
 
   try {
     const { price, date, user_id } = req.body;
-    const result = await pool.query(
-      'INSERT INTO orders (price, date, user_id) VALUES ($1, $2, $3) RETURNING *',
-      [price, date, user_id]
-    );
-    res.json(result.rows[0]);
+    const order = new Order({ price, date, user_id });
+    await order.save();
+    res.json(order);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err.message);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// PUT /orders/:id to update an existing order
 router.put('/:id', validateOrder, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -38,43 +34,40 @@ router.put('/:id', validateOrder, async (req, res) => {
 
   try {
     const { price, date, user_id } = req.body;
-    const result = await pool.query(
-      'UPDATE orders SET price = $1, date = $2, user_id = $3 WHERE id = $4 RETURNING *',
-      [price, date, user_id, req.params.id]
-    );
-    res.json(result.rows[0]);
+    const order = await Order.findByIdAndUpdate(req.params.id, { price, date, user_id }, { new: true });
+    res.json(order);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /orders to get all orders
 router.get('/', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM orders');
-    res.json(result.rows);
+    const orders = await Order.find();
+    res.json(orders);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err.message);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// GET /orders/:id to get a specific order
 router.get('/:id', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM orders WHERE id = $1', [req.params.id]);
-    res.json(result.rows[0]);
+    const order = await Order.findById(req.params.id);
+    res.json(order);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err.message);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// DELETE /orders/:id to delete an order
 router.delete('/:id', async (req, res) => {
   try {
-    await pool.query('DELETE FROM orders WHERE id = $1', [req.params.id]);
+    await Order.findByIdAndDelete(req.params.id);
     res.status(204).send();
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err.message);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
