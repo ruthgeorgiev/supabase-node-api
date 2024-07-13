@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const { body, validationResult } = require('express-validator');
+const UserService = require('../services/userService');
 const router = express.Router();
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -9,6 +10,8 @@ const headers = {
   'apikey': supabaseKey,
   'Authorization': `Bearer ${supabaseKey}`
 };
+
+const userService = new UserService(supabaseUrl, headers);
 
 const validateUser = [
   body('first_name').isString().isLength({ min: 1, max: 255 }),
@@ -35,6 +38,8 @@ router.post('/', validateUser, async (req, res) => {
   }
 });
 
+
+
 router.put('/:id', validateUser, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -43,13 +48,11 @@ router.put('/:id', validateUser, async (req, res) => {
 
   try {
     const { first_name, last_name, age, active } = req.body;
-    const response = await axios.patch(`${supabaseUrl}/rest/v1/users?id=eq.${req.params.id}`, {
-      first_name, last_name, age, active
-    }, { headers });
-    res.json(response.data);
+    const userData = { first_name, last_name, age, active };
+    const updatedUser = await userService.updateUser(req.params.id, userData);
+    res.json(updatedUser);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: err.message });
   }
 });
 
