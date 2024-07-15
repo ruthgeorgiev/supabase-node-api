@@ -84,27 +84,21 @@ class UserService {
 
   async checkUserInactive(id) {
     try {
-      console.log(`Fetching orders for user ID: ${id}`);
       const ordersResponse = await axios.get(
         `${this.supabaseUrl}/rest/v1/orders?user_id=eq.${id}`,
         { headers: this.headers }
       );
-      console.log(`Orders found: ${ordersResponse.data.length}`);
       if (ordersResponse.data.length === 0) {
-        console.log(`No orders found for user ID: ${id}. Setting user as inactive.`);
         const result = await axios.patch(
           `${this.supabaseUrl}/rest/v1/users?id=eq.${id}`,
           { active: false },
           { headers: this.headers }
         );
-        console.log(`User ID: ${id} set to inactive. Result: ${JSON.stringify(result.data)}`);
-        return result.data[0];  // Ensure the updated user is returned
+        return result.data[0];
       } else {
-        console.log(`User ID: ${id} has orders.`);
         throw new Error('User has orders');
       }
     } catch (error) {
-      console.error(`Error checking inactivity for user ID: ${id} - ${error.message}`);
       if (error.message === 'User has orders') {
         throw error;
       } else {
